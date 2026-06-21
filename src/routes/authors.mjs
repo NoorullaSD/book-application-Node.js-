@@ -2,59 +2,95 @@ import express from "express"
 import { books } from "../utils/constants.mjs"
 import { authors } from "../utils/constants.mjs"
 import { validateBookId } from "../validators/bookValidator.mjs";
+import { validateAuthorId } from "../validators/authorValidator.mjs";
 import { handleValidation } from "../middleware/handleValidation.mjs";
+import Author from "../models/Author.js";
+import Book from "../models/Book.js";
+import { validationResult } from "express-validator";
 
 const router = express.Router();
 
 const getAllAuthors = async function (req, res) {
 
+    let result
     let { filter, value } = req.query;
 
     if (filter && value) {
-
-        let result = books.filter(
-            item => item.title.includes(value)
-        );
-
-        return res.status(200).send(result);
-    }
-
-    let result = books.map((item) => {
-        const author = authors.find((author) => author.id == item.id)
-        return (
-            {
-                ...item,
-                author
+        result = await Author.find({
+            [filter]: {
+                $regex: value,
+                $options: "i"
             }
-        )
-    })
+        })
+    }
+    else {
+        result = await Author.find()
+    }
     res.status(200).send(result);
 }
 
-const getAuthorBook = (req, res) => {
-    const { filter, value } = req.query
+const getAuthorById = async function (req, res, next) {
 
-    const author = authors.filter((author) => (
-        author[filter].includes(value)
-    ))
+    const validErrors = validationResult(req);
 
-    const result = books.filter((book) => (
-        author.find((author) => author.id == book.id)
-    ))
+    try {
+        let result = req.author
 
-    const final = result.map((item) => {
-        let temp = author.find((data) => data.id == item.id)
-        return (
-            {
-                ...item,
-                author: temp
+        if (!result) {
+            const error = new Error(validErrors.errors[0].msg);
+            error.statusCode = 404;
+            throw error;
+        }
+
+        res.status(200).send(result);
+    }
+    catch (error) {
+        next(error);
+    }
+
+}
+
+const getAuthorBook = async (req, res) => {
+    let { filter, value } = req.query
+    let book
+    console.log(filter, value)
+    if (filter && value) {
+
+        let author = await Author.find({
+            [filter]: {
+                $regex: value,
+                $options: "i"
             }
-        )
-    })
-    res.status(200).send(final)
+        })
+
+        if (!author) {
+            return res.status(401).send({
+                message: "Author not found"
+            })
+        }
+
+        book = await Book.find({
+            authorId: author[0]["_id"]
+        }).populate("authorId");
+
+        console.log(book)
+
+        if (!book) {
+            return res.status(401).send({
+                message: "Book not found"
+            })
+        }
+    }
+
+
+
+    return res.status(200).send(book)
+
+
 }
 
 router.get("/all/authors", getAllAuthors);
-router.get("/authors", getAuthorBook)
+router.get("/author/:id", validateAuthorId, getAuthorById)
+router.get("/author", getAuthorBook)
 
 export default router 

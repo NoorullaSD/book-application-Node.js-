@@ -1,35 +1,25 @@
 import { param } from "express-validator";
-import { books } from "../utils/constants.mjs";
+import mongoose from "mongoose";
+import Book from "../models/Book.js";
 
 export const validateBookId = [
 
     param("id")
 
-        .isInt()
-        .withMessage("Book id must be a number")
+        .custom(async (value, { req }) => {
 
-        .isInt({ min: 1, max: 50 })
-        .withMessage("Only 50 book available")
-
-        .custom((value, { req }) => {
-
-            const id = Number(value);
-
-            const index = books.findIndex(
-                item => item.id === id
-            );
-
-            if (index === -1) {
-
-                throw new Error("Book not found");
-
+            if (!mongoose.Types.ObjectId.isValid(value)) {
+                throw new Error("Invalid book id");
             }
 
-            // Save for later use
+            const book = await Book.findById(value);
+            if (!book) {
+                throw new Error("Book not found");
+            }
 
-            req.bookIndex = index;
-
+            req.book = book;
             return true;
+
         })
 
 ];

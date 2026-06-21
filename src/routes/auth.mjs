@@ -78,7 +78,7 @@ router.post("/login", limiter, async (req, res) => {
         },
         "my-secret-key",
         {
-            expiresIn: "1h"
+            expiresIn: "24h"
         }
     )
 

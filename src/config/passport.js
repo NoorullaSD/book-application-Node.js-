@@ -10,7 +10,6 @@ const options = {
 
 passport.use(
     new JwtStrategy(options, (payload, done) => {
-
         try {
             const user = users.find(
                 user => user.id === payload.id
@@ -22,7 +21,7 @@ passport.use(
 
             return done(null, false);
         }
-        catch {
+        catch (error) {
             return done(error, false);
         }
     })
